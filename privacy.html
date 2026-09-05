@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="img/icon-512.png" type="image/png">
+<title>Umbra Privacy Policy</title>
+<style>
+  :root {
+    --ground: #050506; --surface: #0F1013; --border: #1F2126;
+    --ink: #F2F3F5; --ink-2: #9A9EA8; --ink-3: #5B5F69; --accent: #38DBFF;
+  }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: "Geist", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; line-height: 1.6; }
+  main { max-width: 68ch; margin: 0 auto; padding: 56px 24px 80px; }
+  .eyebrow { font-family: "SF Mono", Menlo, monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+  h1 { font-size: 34px; line-height: 1.1; margin: 12px 0 8px; font-weight: 600; }
+  .updated { color: var(--ink-3); font-size: 14px; margin-bottom: 36px; }
+  h2 { font-size: 18px; margin: 36px 0 10px; font-weight: 600; }
+  p, li { color: var(--ink-2); font-size: 16px; }
+  li { margin: 6px 0; }
+  strong { color: var(--ink); font-weight: 500; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 4px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--ink-2); }
+  th { color: var(--ink-3); font-weight: 500; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+  td:first-child { color: var(--ink); white-space: nowrap; }
+  code { font-family: "SF Mono", Menlo, monospace; font-size: 14px; color: var(--ink); }
+  a { color: var(--accent); }
+  .summary { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin: 0 0 8px; }
+  .summary p { margin: 0; color: var(--ink); }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Umbra for iOS</div>
+  <h1>Privacy Policy</h1>
+  <div class="updated">Last updated September 5, 2026</div>
+
+  <div class="summary"><p>Umbra is a DNS firewall that runs entirely on your phone. It has no accounts, no analytics, no advertising, and no servers of its own. The list below is everything that leaves the device, and why.</p></div>
+
+  <h2>What Umbra does</h2>
+  <p>Umbra installs a local VPN configuration that routes only DNS lookups through the app. Lookups for known tracker domains are answered locally with a null address. Every other lookup is forwarded, encrypted, to a public DNS resolver you choose. Umbra never carries your web traffic; it sees domain names, not page contents.</p>
+
+  <h2>Data that stays on your phone</h2>
+  <ul>
+    <li><strong>DNS log.</strong> Each lookup's domain name, time, record type, and whether it was blocked. Kept for seven days, then deleted automatically. You can clear it at any time in Settings.</li>
+    <li><strong>App Privacy Report imports.</strong> If you share Apple's App Privacy Report with Umbra, the per-app domain records in it are stored on the phone for up to thirty days so the Apps tab can show which apps contact which trackers.</li>
+    <li><strong>Your rules and names.</strong> Domains you block or allow, and any app names you set.</li>
+  </ul>
+  <p>None of this is uploaded, synced, or shared. It lives in Umbra's private storage on your device and is removed when you delete the app.</p>
+
+  <h2>Data that leaves your phone</h2>
+  <table>
+    <tr><th>Sent</th><th>To whom</th><th>Why</th></tr>
+    <tr><td>DNS lookups</td><td>The resolver you pick in Settings: Quad9 (default), Cloudflare, Mullvad, or a custom server</td><td>To resolve domain names that are not blocked. Sent over HTTPS. Each resolver's own privacy policy governs what it retains. Umbra's default, Quad9, states that it does not log client addresses.</td></tr>
+    <tr><td>App bundle identifiers</td><td>Apple (<code>itunes.apple.com</code>)</td><td>To fetch the icon of each app shown on the Apps tab. Only the identifier is sent, for example <code>com.spotify.client</code>. Icons are cached on the phone.</td></tr>
+  </table>
+  <p>That is the complete list. Umbra makes no other network requests and has no server that receives anything from you.</p>
+
+  <h2>What Umbra does not do</h2>
+  <ul>
+    <li>No account or sign-in.</li>
+    <li>No analytics, crash reporting, or advertising frameworks.</li>
+    <li>No inspection of web page contents. Encrypted traffic stays encrypted.</li>
+    <li>No selling, sharing, or disclosing of any data to third parties, ever.</li>
+  </ul>
+
+  <h2>Permissions</h2>
+  <p>Umbra asks iOS for permission to add a VPN configuration. This is how iOS lets an app act as the phone's DNS server. Umbra does not use this to route any traffic other than DNS.</p>
+
+  <h2>Children</h2>
+  <p>Umbra is not directed at children under 13 and collects no personal information from anyone.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the date at the top changes with it and the new version ships with the app update that needs it.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: <a href="mailto:cadekukk@gmail.com">cadekukk@gmail.com</a>.</p>
+</main>
+
+</body>
+</html>

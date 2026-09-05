@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Umbra is a DNS firewall for iPhone that blocks trackers on the device and shows every domain your phone resolves. No servers, no accounts.">
+<meta property="og:title" content="Umbra">
+<meta property="og:description" content="The part of the shadow where no light gets through. A DNS firewall that lives on your phone and sends nothing anywhere.">
+<meta property="og:image" content="img/cube-on.png">
+<link rel="icon" href="img/icon-512.png" type="image/png">
+<link rel="apple-touch-icon" href="img/icon-512.png">
+<meta name="theme-color" content="#050506">
+<title>Umbra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;500;700;900&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #050506; --surface: #0F1013; --surface-2: #15171B; --border: #1F2126; --border-2: #2C2F36;
+    --ink: #F2F3F5; --ink-2: #9A9EA8; --ink-3: #5B5F69; --accent: #38DBFF; --accent-dim: rgba(56,219,255,0.14);
+    --good: #7BE0A5; --warn: #F2C46B;
+    --display: "Big Shoulders Display", "Archivo Narrow", "Arial Narrow", sans-serif;
+    --body: "Geist", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: "Geist Mono", "SF Mono", Menlo, Consolas, monospace;
+    --measure: 62ch; --gutter: clamp(20px, 5vw, 72px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: var(--ink); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 0.95; margin: 0; text-wrap: balance; letter-spacing: 0.005em; }
+  h2 { font-size: clamp(44px, 7vw, 92px); }
+  h3 { font-size: clamp(26px, 3vw, 36px); font-weight: 500; }
+  p { margin: 0; max-width: var(--measure); }
+  .lede { font-size: 18px; color: var(--ink-2); font-weight: 300; }
+  section { padding: clamp(72px, 10vw, 140px) var(--gutter); position: relative; }
+  .rule { height: 1px; background: var(--border); margin: 0 var(--gutter); }
+  .wordmark { display: inline-flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 900; font-size: 22px; letter-spacing: 0.32em; text-transform: uppercase; }
+  .wordmark img { height: 26px; width: auto; display: block; }
+
+  /* ---------- Hero: the cube assembles on scroll ---------- */
+  .hero-track { height: 230vh; position: relative; }
+  .hero-stage { position: sticky; top: 0; height: 100vh; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+  .hero-top, .hero-bottom { position: relative; z-index: 2; padding: 28px var(--gutter); display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+  .hero-nav { display: flex; gap: 28px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .hero-nav a { color: var(--ink-2); text-decoration: none; }
+  .hero-nav a:hover { color: var(--ink); }
+  .hero-center { position: relative; z-index: 1; display: grid; place-items: center; align-content: center; padding: 0 var(--gutter); }
+  .cube-wrap { width: min(62vh, 78vw); aspect-ratio: 1; transform-style: preserve-3d; will-change: transform; }
+  .cube-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .hero-state { font-family: var(--mono); font-size: 13px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--ink-2); margin-top: -10px; transition: color 300ms; }
+  .hero-state.on { color: var(--accent); }
+  .hero-thesis { margin: 16px auto 0; text-align: center; font-size: clamp(16px, 1.8vw, 20px); font-weight: 300; color: var(--ink-2); max-width: 36ch; opacity: 0; transform: translateY(8px); transition: opacity 400ms, transform 400ms; }
+  .hero-thesis.show { opacity: 1; transform: none; }
+  .hero-meta { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); display: grid; gap: 4px; }
+  .hero-meta b { color: var(--ink-2); font-weight: 500; }
+  .phase { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 12px; }
+  .phase-bar { width: 120px; height: 1px; background: var(--border-2); position: relative; }
+  .phase-bar i { position: absolute; left: 0; top: -1px; height: 3px; width: 0%; background: var(--accent); transition: width 80ms linear; }
+  .scroll-hint { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); z-index: 2; transition: opacity 300ms; }
+
+  /* ---------- In the app ---------- */
+  .shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 44px; perspective: 1600px; }
+  .shot { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 8px; margin: 0; transition: transform 500ms cubic-bezier(.2,.7,.2,1), border-color 300ms; transform: rotateY(var(--ry, 0deg)) translateZ(0); }
+  .shot:hover { border-color: var(--border-2); transform: translateY(-6px); }
+  .shot img { width: 100%; height: auto; display: block; border-radius: 16px; }
+  .shot .cap { padding: 14px 8px 8px; font-size: 13px; color: var(--ink-2); }
+  .shot .cap b { display: block; color: var(--ink); font-weight: 500; margin-bottom: 2px; }
+
+  /* ---------- How it works ---------- */
+  .split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+  .split > div:first-child { position: sticky; top: 96px; }
+  .flow { width: 100%; height: auto; display: block; }
+  .flow text { font-family: var(--mono); font-size: 11px; fill: var(--ink-2); letter-spacing: 0.08em; }
+  .flow .lbl-strong { fill: var(--ink); font-size: 13px; letter-spacing: 0.02em; }
+  .flow .lbl-dim { fill: var(--ink-3); }
+  .flow .node { fill: var(--surface); stroke: var(--border-2); }
+  .flow .wire { fill: none; stroke: var(--border-2); stroke-width: 1; }
+  .flow .wire-accent { stroke: var(--accent); opacity: 0.5; }
+  .flow .pkt { fill: var(--ink); }
+  .flow .pkt-tracker { fill: var(--accent); }
+  .steps { margin-top: 40px; display: grid; border-top: 1px solid var(--border); }
+  .step { display: grid; grid-template-columns: 96px 1fr; gap: 16px; padding: 22px 0; border-bottom: 1px solid var(--border); }
+  .step .k { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.06em; padding-top: 3px; }
+  .step h4 { margin: 0 0 6px; font-size: 16px; font-weight: 500; }
+  .step p { font-size: 15px; color: var(--ink-2); }
+
+  /* ---------- Constraints ---------- */
+  .ledger { margin-top: 48px; border-top: 1px solid var(--border); }
+  .ledger-row { display: grid; grid-template-columns: 1.1fr 1fr 1.3fr; gap: 24px; padding: 26px 0; border-bottom: 1px solid var(--border); align-items: start; }
+  .ledger-head { padding: 12px 0; font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .ledger-row .want { font-family: var(--display); font-size: 30px; font-weight: 500; line-height: 1; }
+  .ledger-row .wall { font-size: 14px; color: var(--ink-2); }
+  .ledger-row .do { font-size: 15px; }
+  .ledger-row .do b { color: var(--accent); font-weight: 500; }
+
+  /* ---------- Desktop demo ---------- */
+  #demo { padding-top: clamp(60px, 8vw, 110px); }
+  .demo-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; margin-bottom: 40px; flex-wrap: wrap; }
+  .demo-stage { perspective: 1800px; perspective-origin: 50% 20%; }
+  .window { background: var(--surface); border: 1px solid var(--border-2); border-radius: 10px; box-shadow: 0 60px 120px -40px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.02) inset; transform: rotateX(var(--tilt, 0deg)) translateZ(0); transform-origin: 50% 0%; transition: transform 120ms linear; display: grid; grid-template-rows: 44px 1fr; min-height: 640px; overflow: hidden; }
+  .titlebar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .lights { display: flex; gap: 8px; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--border-2); background: var(--ground); display: block; }
+  .titlebar .title { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); text-align: center; }
+  .sim { justify-self: end; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-dim); background: var(--accent-dim); padding: 4px 8px; border-radius: 3px; }
+  .app { display: grid; grid-template-columns: 200px 1fr; min-height: 0; }
+  .sidebar { border-right: 1px solid var(--border); padding: 18px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .nav-btn { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 9px 10px; color: var(--ink-2); cursor: pointer; font-size: 14px; }
+  .nav-btn:hover, .nav-btn[aria-current="page"] { color: var(--ink); background: var(--surface-2); }
+  .nav-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+  .nav-btn .count { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+  .sidebar .spacer { flex: 1; }
+  .sidebar .status { padding: 12px 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); display: grid; gap: 6px; border-top: 1px solid var(--border); }
+  .sidebar .status b { color: var(--ink-2); font-weight: 500; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); vertical-align: middle; margin-right: 6px; }
+  .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .dot.paused { background: var(--warn); }
+  .pane { padding: 28px 32px; min-width: 0; }
+  .pane[hidden] { display: none; }
+  .pane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; margin-bottom: 24px; }
+  .pane-head h3 { font-size: 30px; }
+  .pane-head .eyebrow { margin-bottom: 4px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border-2); background: transparent; border-radius: 999px; padding: 5px 12px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--ground); }
+  .chip.warn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); }
+
+  /* Shield pane */
+  .shield-grid { display: grid; grid-template-columns: 300px 1fr; gap: 32px; align-items: start; }
+  .mini-cube { width: 260px; height: 250px; margin: 0 auto; cursor: pointer; background: transparent; border: 0; padding: 0; display: block; }
+  .mini-cube svg { width: 100%; height: 100%; overflow: visible; }
+  .power-label { text-align: center; margin-top: 4px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-2); }
+  .power-label.on { color: var(--accent); }
+  .power-label.paused { color: var(--warn); }
+  .power-sub { text-align: center; margin: 8px auto 0; font-size: 13px; color: var(--ink-3); max-width: 30ch; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tile { padding: 18px 20px; border-right: 1px solid var(--border); }
+  .tile:last-child { border-right: 0; }
+  .tile .v { font-family: var(--display); font-size: 44px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+  .tile .v.accent { color: var(--accent); }
+  .tile .l { margin-top: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .chart-card { margin-top: 20px; border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px 14px; }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .chart-head .t { font-size: 13px; font-weight: 500; }
+  .legend { display: flex; gap: 16px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; background: var(--ink-3); }
+  .legend i.accent { background: var(--accent); }
+  .spark { width: 100%; height: 120px; display: block; }
+  .spark .grid { stroke: var(--border); stroke-width: 1; }
+  .spark .axis { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); }
+  .spark .total { fill: none; stroke: var(--ink-3); stroke-width: 1.5; }
+  .spark .blocked { fill: none; stroke: var(--accent); stroke-width: 2; }
+  .spark .area { fill: var(--accent); opacity: 0.08; }
+  .spark .end { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+  .spark .cross { stroke: var(--border-2); stroke-width: 1; }
+  .tip { position: absolute; pointer-events: none; background: var(--ground); border: 1px solid var(--border-2); border-radius: 4px; padding: 6px 8px; font-family: var(--mono); font-size: 11px; color: var(--ink-2); white-space: nowrap; transform: translate(-50%, -110%); display: none; z-index: 5; }
+  .tip b { color: var(--ink); font-weight: 500; }
+  .bars { margin-top: 20px; display: grid; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: 200px 1fr 48px; gap: 12px; align-items: center; font-family: var(--mono); font-size: 12px; }
+  .bar-row .d { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-row .track { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+  .bar-row .fill { height: 100%; background: var(--accent); border-radius: 3px; width: 0; transition: width 600ms cubic-bezier(.2,.7,.2,1); }
+  .bar-row .n { text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  /* Log pane */
+  .log { border-top: 1px solid var(--border); max-height: 480px; overflow-y: auto; }
+  .row { display: grid; grid-template-columns: 3px 84px 1fr 150px 70px 72px; gap: 14px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; animation: rowin 260ms ease-out; }
+  @keyframes rowin { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .row .m { height: 100%; min-height: 18px; background: var(--border); border-radius: 1px; }
+  .row.blocked .m { background: var(--accent); }
+  .row .t { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .row .d { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row.blocked .d { color: var(--ink); }
+  .row .a { color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .q { color: var(--ink-3); }
+  .row .s { text-align: right; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .row.blocked .s { color: var(--accent); }
+  .log-empty { padding: 40px; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+  /* Apps pane */
+  .apps { display: grid; grid-template-columns: 300px 1fr; gap: 24px; min-height: 420px; }
+  .exact { border: 1px solid var(--border); background: var(--surface-2); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; font-size: 12px; color: var(--ink-2); }
+  .exact b { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; font-weight: 500; }
+  .app-list { border-top: 1px solid var(--border); }
+  .app-item { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 10px 6px; background: transparent; border: 0; border-bottom: 1px solid var(--border); cursor: pointer; color: var(--ink-2); }
+  .app-item:hover { color: var(--ink); background: var(--surface-2); }
+  .app-item[aria-current="true"] { color: var(--ink); }
+  .app-item .mono { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border-2); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--ink); background: var(--ground); }
+  .app-item .nm { font-size: 14px; }
+  .app-item .bid { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+  .app-item .tc { font-family: var(--mono); font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .app-item .tc.zero { color: var(--ink-3); }
+  .app-detail h4 { margin: 0; font-family: var(--display); font-size: 34px; font-weight: 500; line-height: 1; }
+  .app-detail .bid { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 6px; }
+  .app-detail .note { margin: 16px 0 20px; font-size: 13px; color: var(--ink-3); max-width: 60ch; }
+  .group-h { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin: 18px 0 6px; }
+  .dom { display: grid; grid-template-columns: 1fr auto 88px; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; }
+  .dom .d { color: var(--ink-2); }
+  .dom.tr .d { color: var(--ink); }
+  .dom .own { color: var(--ink-3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { display: inline-block; font-size: 8px; letter-spacing: 0.12em; border: 1px solid var(--border-2); border-radius: 3px; padding: 1px 4px; color: var(--ink-2); margin-left: 4px; vertical-align: middle; }
+  .badge.you { color: var(--accent); border-color: rgba(56,219,255,0.5); }
+  .toggle { justify-self: end; width: 40px; height: 22px; border-radius: 11px; border: 1px solid var(--border-2); background: var(--ground); position: relative; cursor: pointer; padding: 0; }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink-3); transition: transform 180ms ease, background 180ms ease; }
+  .toggle[aria-checked="true"] { border-color: var(--accent); background: var(--accent-dim); }
+  .toggle[aria-checked="true"]::after { transform: translateX(18px); background: var(--accent); }
+
+  /* Rules pane */
+  .lists { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .list-box h4 { margin: 0 0 4px; font-size: 15px; font-weight: 500; }
+  .list-box .hint { font-size: 12px; color: var(--ink-3); margin-bottom: 12px; }
+  .add { display: flex; gap: 8px; margin-bottom: 8px; }
+  .add input { flex: 1; background: var(--ground); border: 1px solid var(--border-2); border-radius: 6px; padding: 8px 10px; font-family: var(--mono); font-size: 12px; color: var(--ink); }
+  .add input::placeholder { color: var(--ink-3); }
+  .add button { border: 1px solid var(--border-2); background: var(--surface-2); border-radius: 6px; padding: 8px 12px; cursor: pointer; font-size: 13px; }
+  .list-rows { border-top: 1px solid var(--border); }
+  .list-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  .list-row .src { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-left: auto; }
+  .list-row button { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; padding: 2px 6px; font-size: 14px; line-height: 1; }
+  .list-row button:hover { color: var(--ink); }
+
+  /* Posture */
+  .posture { border-top: 1px solid var(--border); }
+  .check { display: grid; grid-template-columns: 110px 1fr; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--border); align-items: start; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 9px; border-radius: 3px; border: 1px solid var(--border-2); color: var(--ink-2); }
+  .pill svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .pill.good { color: var(--good); border-color: rgba(123,224,165,0.3); }
+  .pill.warn { color: var(--warn); border-color: rgba(242,196,107,0.3); }
+  .check h5 { margin: 0 0 4px; font-size: 14px; font-weight: 500; }
+  .check p { font-size: 13px; color: var(--ink-2); }
+
+  /* Settings */
+  .settings { display: grid; gap: 28px; max-width: 640px; }
+  .setting h4 { margin: 0 0 4px; font-size: 14px; font-weight: 500; }
+  .setting .hint { font-size: 13px; color: var(--ink-3); margin-bottom: 10px; }
+  .radio { display: grid; grid-template-columns: 18px 1fr; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; background: transparent; border-top: 0; border-left: 0; border-right: 0; width: 100%; text-align: left; }
+  .radio i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border-2); display: block; margin-top: 2px; position: relative; }
+  .radio[aria-checked="true"] i { border-color: var(--accent); }
+  .radio[aria-checked="true"] i::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent); }
+  .radio .nm { font-size: 14px; }
+  .radio .ds { font-size: 12px; color: var(--ink-3); }
+  .kv { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .kv span:last-child { color: var(--ink-2); font-family: var(--mono); font-size: 12px; text-align: right; }
+
+  /* ---------- Roadmap + closing ---------- */
+  .road { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 40px; }
+  .road-card { border: 1px solid var(--border); border-radius: 10px; padding: 22px 22px 20px; background: var(--surface); }
+  .road-card .st { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .road-card .st.now { color: var(--accent); }
+  .road-card h4 { margin: 10px 0 8px; font-family: var(--display); font-size: 34px; font-weight: 500; line-height: 1; }
+  .road-card p { font-size: 14px; color: var(--ink-2); }
+  .numbers { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 48px; }
+  .num { padding: 32px 24px 32px 0; border-right: 1px solid var(--border); }
+  .num:last-child { border-right: 0; }
+  .num + .num { padding-left: 24px; }
+  .num .v { font-family: var(--display); font-size: clamp(56px, 8vw, 110px); font-weight: 700; line-height: 0.9; font-variant-numeric: tabular-nums; }
+  .num .v .u { font-size: 0.4em; color: var(--ink-3); font-weight: 500; margin-left: 4px; }
+  .num .l { margin-top: 12px; font-size: 14px; color: var(--ink-2); max-width: 26ch; }
+  footer { padding: 40px var(--gutter) 56px; display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; font-size: 13px; color: var(--ink-3); }
+  footer p { max-width: 60ch; }
+
+  @media (max-width: 900px) {
+    .split, .ledger-row, .shield-grid, .apps, .lists, .road, .numbers { grid-template-columns: 1fr; }
+    .shots { grid-template-columns: 1fr 1fr; }
+    .split > div:first-child { position: static; }
+    .ledger-head, .hero-nav { display: none; }
+    .app { grid-template-columns: 1fr; }
+    .sidebar { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--border); }
+    .sidebar .spacer, .sidebar .status { display: none; }
+    .row { grid-template-columns: 3px 70px 1fr 64px; }
+    .row .a, .row .q { display: none; }
+    .num { border-right: 0; border-bottom: 1px solid var(--border); padding-left: 0 !important; }
+    .num:last-child { border-bottom: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .row { animation: none; }
+    .window { transition: none; transform: none !important; }
+    .bar-row .fill, .shot { transition: none; }
+  }
+</style>
+
+</head>
+<body>
+<!-- ============ HERO ============ -->
+<div class="hero-track" id="hero-track">
+  <div class="hero-stage" id="hero-stage">
+    <div class="hero-top">
+      <div class="wordmark"><img src="img/logo-white.png" alt="U">MBRA</div>
+      <nav class="hero-nav" aria-label="Sections">
+        <a href="#inapp">In the app</a>
+        <a href="#how">How it works</a>
+        <a href="#walls">What iOS allows</a>
+        <a href="#demo">Mac</a>
+        <a href="#road">Roadmap</a>
+      </nav>
+    </div>
+    <div class="hero-center">
+      <div class="cube-wrap" id="cube-wrap" aria-hidden="true"><svg id="hero-cube" viewBox="0 0 600 600"></svg></div>
+      <div class="hero-state" id="hero-state" aria-live="polite">Off</div>
+      <p class="hero-thesis" id="hero-thesis">The part of the shadow where no light gets through. A DNS firewall that lives on your phone and sends nothing anywhere.</p>
+    </div>
+    <div class="scroll-hint" id="scroll-hint">Scroll to assemble</div>
+    <div class="hero-bottom">
+      <div class="hero-meta">
+        <span>iOS <b>TestFlight review</b></span>
+        <span>Mac <b>in design</b> · Android <b>next</b></span>
+      </div>
+      <div class="phase" aria-hidden="true">
+        <span>Apart</span>
+        <span class="phase-bar"><i id="phase-fill"></i></span>
+        <span>Protected</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ IN THE APP ============ -->
+<section id="inapp">
+  <div class="eyebrow">In the app</div>
+  <h2 style="margin-top:14px">Six slabs. One switch.</h2>
+  <p class="lede" style="margin-top:22px">The cube is the control. Apart and gray means off. Tap it and the pieces close into one white block: every tracker name on the phone now gets a dead answer. The Apps tab fills itself from what the phone resolves, and gets exact when you share Apple's own privacy report to it.</p>
+  <div class="shots" id="shots">
+    <figure class="shot"><img src="img/cube-off.png" alt="Umbra Shield tab with protection off: six gray slabs hanging apart"><figcaption class="cap"><b>Off</b>Slabs apart, log idle.</figcaption></figure>
+    <figure class="shot"><img src="img/cube-on.png" alt="Umbra Shield tab with protection on: a solid white cube above a cyan shadow"><figcaption class="cap"><b>Protected</b>One cube, cyan shadow, counters live.</figcaption></figure>
+    <figure class="shot"><img src="img/apps-icons.png" alt="Umbra Apps tab listing apps with their icons and tracker counts"><figcaption class="cap"><b>Apps</b>Recognised from the DNS log, icons from the App Store.</figcaption></figure>
+    <figure class="shot"><img src="img/apps-detail.png" alt="An app page in Umbra with tracker domains and block toggles"><figcaption class="cap"><b>Per app</b>Trackers first, a switch on each, badges say who flagged it.</figcaption></figure>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how">
+  <div class="split">
+    <div>
+      <div class="eyebrow">How it works</div>
+      <h2 style="margin-top:14px">One route into the dark.</h2>
+      <p class="lede" style="margin-top:22px">Every app on the phone has to ask a name server before it can talk to anyone. Umbra becomes that name server. Only DNS enters the tunnel; everything else takes its normal path, so the battery barely notices.</p>
+      <div class="steps">
+        <div class="step"><span class="k">10.7.0.1</span><div><h4>The tunnel answers to one address</h4><p>iOS is told that its DNS server lives at a private address, and that the only route into the tunnel is to that address. Web traffic never enters.</p></div></div>
+        <div class="step"><span class="k">0.0.0.0</span><div><h4>Trackers get a dead answer</h4><p>A name on the blocklist, or on your own block list, is answered with the null address. The app believes the tracker does not exist and moves on. Your allow list wins over everything.</p></div></div>
+        <div class="step"><span class="k">DoH</span><div><h4>Everything else is resolved over HTTPS</h4><p>Allowed names are forwarded, encrypted, to a resolver you pick. Quad9 by default. The resolver's own name is answered from fixed addresses so the tunnel never has to ask itself.</p></div></div>
+        <div class="step"><span class="k">7 d</span><div><h4>The log stays and then leaves</h4><p>Every query is written to a local database and deleted after seven days. No account, no sync, no telemetry.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <svg class="flow" viewBox="0 0 640 560" role="img" aria-label="Diagram: a DNS query leaves an app, enters the Umbra tunnel, and is either sinkholed as a tracker or forwarded encrypted to a resolver.">
+        <defs>
+          <path id="p-app" d="M 120 120 C 120 200, 120 220, 320 260" />
+          <path id="p-sink" d="M 320 300 C 320 360, 180 380, 140 440" />
+          <path id="p-res" d="M 320 300 C 320 360, 460 380, 500 440" />
+          <path id="p-back" d="M 500 440 C 460 380, 320 360, 320 300 C 120 220, 120 200, 120 120" />
+        </defs>
+        <use href="#p-app" class="wire" /><use href="#p-sink" class="wire wire-accent" /><use href="#p-res" class="wire" />
+        <rect class="node" x="40" y="40" width="160" height="80" rx="10" />
+        <text x="60" y="70" class="lbl-strong">Any app</text><text x="60" y="94" class="lbl-dim">asks for a name</text>
+        <rect class="node" x="200" y="230" width="240" height="70" rx="10" />
+        <text x="222" y="258" class="lbl-strong">Umbra tunnel</text><text x="222" y="282" class="lbl-dim">10.7.0.1 · DNS only</text>
+        <circle cx="140" cy="470" r="46" fill="var(--ground)" stroke="var(--accent)" stroke-opacity="0.6" />
+        <circle cx="140" cy="470" r="30" fill="var(--ground)" stroke="var(--accent)" stroke-opacity="0.25" />
+        <text x="140" y="474" text-anchor="middle" class="lbl-strong">0.0.0.0</text>
+        <text x="140" y="540" text-anchor="middle">TRACKER · SINKHOLED</text>
+        <rect class="node" x="420" y="440" width="180" height="70" rx="10" />
+        <text x="440" y="468" class="lbl-strong">Quad9</text><text x="440" y="492" class="lbl-dim">DNS over HTTPS</text>
+        <text x="510" y="540" text-anchor="middle">ALLOWED · ENCRYPTED</text>
+        <circle class="pkt" r="4"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0s"><mpath href="#p-app" /></animateMotion></circle>
+        <circle class="pkt-tracker" r="4"><animateMotion dur="2.4s" repeatCount="indefinite" begin="1.2s"><mpath href="#p-app" /></animateMotion></circle>
+        <circle class="pkt" r="4"><animateMotion dur="2.2s" repeatCount="indefinite" begin="2.4s"><mpath href="#p-res" /></animateMotion></circle>
+        <circle class="pkt-tracker" r="4"><animateMotion dur="2.2s" repeatCount="indefinite" begin="3.6s"><mpath href="#p-sink" /></animateMotion></circle>
+        <circle class="pkt" r="3" opacity="0.6"><animateMotion dur="3s" repeatCount="indefinite" begin="4.6s"><mpath href="#p-back" /></animateMotion></circle>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ============ CONSTRAINTS ============ -->
+<section id="walls">
+  <div class="eyebrow">What iOS allows</div>
+  <h2 style="margin-top:14px">Four walls, four honest answers.</h2>
+  <p class="lede" style="margin-top:22px">An iPhone that is not managed by a company keeps apps blind to one another. Umbra does not pretend otherwise. Each wall got a substitute that is real.</p>
+  <div class="ledger">
+    <div class="ledger-row ledger-head"><span>What you would want</span><span>The wall</span><span>What Umbra does</span></div>
+    <div class="ledger-row">
+      <div class="want">Block trackers per app</div>
+      <div class="wall">A packet tunnel sees IP packets with no sender. The filter that names the app only runs on supervised or managed devices.</div>
+      <div class="do">Blocks by <b>domain, for every app</b>, and says plainly that it is global. Then shows which app talks to which tracker, so the block is an informed one.</div>
+    </div>
+    <div class="ledger-row">
+      <div class="want">See your apps listed</div>
+      <div class="wall">No public API returns the app list. The private one gets an app rejected.</div>
+      <div class="do"><b>Recognises apps from their own domains</b> in the DNS log and credits the trackers that fire right after. Share Apple's App Privacy Report to Umbra and the estimates become exact.</div>
+    </div>
+    <div class="ledger-row">
+      <div class="want">Read what apps send</div>
+      <div class="wall">Payloads are encrypted end to end. Breaking that needs a root certificate on the phone, and pinned apps refuse it anyway.</div>
+      <div class="do">Shows <b>who was asked for</b>: every domain, its timing, its type, and whether it was answered or sinkholed.</div>
+    </div>
+    <div class="ledger-row">
+      <div class="want">Run next to your VPN</div>
+      <div class="wall">iOS runs one VPN tunnel at a time, and ignores DNS profiles while any VPN is connected.</div>
+      <div class="do">Steps aside and says so. When another VPN takes over, the shield reads <b>Paused</b> with the reason, and one tap resumes once that VPN is off.</div>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ============ DESKTOP DEMO ============ -->
+<section id="demo">
+  <div class="demo-head">
+    <div>
+      <div class="eyebrow">Umbra for Mac, in design</div>
+      <h2 style="margin-top:14px">The Mac can see more.</h2>
+    </div>
+    <p class="lede" style="max-width:46ch">macOS lets a system extension see which app opens each connection, so on the Mac, per-app rules will be real rather than estimated. This is a working mock on simulated traffic. Turn the shield off, block a tracker from the Apps view, or let another VPN take over.</p>
+  </div>
+  <div class="demo-stage" id="demo-stage">
+    <div class="window" id="window" role="region" aria-label="Umbra desktop demo">
+      <div class="titlebar">
+        <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="title">Umbra</div>
+        <div class="sim">Simulated traffic</div>
+      </div>
+      <div class="app">
+        <nav class="sidebar" aria-label="Views">
+          <button class="nav-btn" data-view="shield" aria-current="page"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/></svg><span>Shield</span></button>
+          <button class="nav-btn" data-view="log"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Log</span><span class="count" id="nav-log-count">0</span></button>
+          <button class="nav-btn" data-view="apps"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>Apps</span><span class="count">10</span></button>
+          <button class="nav-btn" data-view="lists"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h8"/><circle cx="18" cy="17" r="2"/></svg><span>Rules</span><span class="count" id="nav-list-count">3</span></button>
+          <button class="nav-btn" data-view="posture"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg><span>Posture</span></button>
+          <button class="nav-btn" data-view="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg><span>Settings</span></button>
+          <div class="spacer"></div>
+          <div class="status">
+            <span><i class="dot on" id="status-dot"></i><b id="status-text">Protected</b></span>
+            <span>Resolver <b id="status-resolver">Quad9</b></span>
+            <span>Blocklist <b>12,480</b></span>
+          </div>
+        </nav>
+
+        <div class="pane" id="pane-shield">
+          <div class="pane-head"><div><div class="eyebrow">Today</div><h3 id="today-date">Thursday</h3></div><div class="toolbar"><button class="chip warn" id="chip-vpn" aria-pressed="false">Another VPN takes over</button><span class="eyebrow" id="clock">00:00:00</span></div></div>
+          <div class="shield-grid">
+            <div>
+              <button class="mini-cube" id="power" aria-pressed="true" aria-label="Turn protection off"><svg id="mini-cube" viewBox="0 0 300 300"></svg></button>
+              <div class="power-label on" id="power-label">Protected</div>
+              <p class="power-sub" id="power-sub">Tracker names are answered with 0.0.0.0. Nothing leaves this Mac.</p>
+            </div>
+            <div>
+              <div class="tiles">
+                <div class="tile"><div class="v" id="t-total">0</div><div class="l">Queries today</div></div>
+                <div class="tile"><div class="v accent" id="t-blocked">0</div><div class="l">Blocked today</div></div>
+                <div class="tile"><div class="v" id="t-apps">10</div><div class="l">Apps seen</div></div>
+              </div>
+              <div class="chart-card" style="position:relative">
+                <div class="chart-head"><span class="t">Queries per hour, last 24 h</span><span class="legend"><span><i></i>All</span><span><i class="accent"></i>Blocked</span></span></div>
+                <svg class="spark" id="spark" viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Line chart of queries and blocked queries per hour over the last 24 hours"></svg>
+                <div class="tip" id="spark-tip"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-head"><span class="t">Most blocked today</span><span class="legend"><span><i class="accent"></i>Sinkholed answers</span></span></div>
+                <div class="bars" id="bars"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-log" hidden>
+          <div class="pane-head"><div><div class="eyebrow">Live</div><h3>Log</h3></div><div class="toolbar"><button class="chip" id="chip-blocked" aria-pressed="false">Blocked only</button><button class="chip" id="chip-pause" aria-pressed="false">Pause</button></div></div>
+          <div class="log" id="log"></div>
+        </div>
+
+        <div class="pane" id="pane-apps" hidden>
+          <div class="pane-head"><div><div class="eyebrow">Per app · exact on the Mac</div><h3>Apps</h3></div><div class="toolbar"><span class="eyebrow">Sorted by tracker contacts</span></div></div>
+          <div class="apps">
+            <div>
+              <div class="exact"><b>On the Mac, exact</b>A system extension sees which app opens each connection, so nothing here is estimated. On iOS the same list starts as estimates from the DNS log and turns exact when you share Apple's App Privacy Report.</div>
+              <div class="app-list" id="app-list"></div>
+            </div>
+            <div class="app-detail" id="app-detail"></div>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-lists" hidden>
+          <div class="pane-head"><div><div class="eyebrow">Yours, on top of the bundled list</div><h3>Rules</h3></div></div>
+          <div class="lists">
+            <div class="list-box">
+              <h4>Block</h4>
+              <div class="hint">Answered with 0.0.0.0 for every app. Subdomains included.</div>
+              <form class="add" id="add-block"><input type="text" placeholder="example-tracker.com" aria-label="Domain to block"><button type="submit">Block</button></form>
+              <div class="list-rows" id="block-rows"></div>
+            </div>
+            <div class="list-box">
+              <h4>Allow</h4>
+              <div class="hint">Wins over every block, including the bundled list. Use it when something breaks.</div>
+              <form class="add" id="add-allow"><input type="text" placeholder="needed-domain.com" aria-label="Domain to allow"><button type="submit">Allow</button></form>
+              <div class="list-rows" id="allow-rows"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-posture" hidden>
+          <div class="pane-head"><div><div class="eyebrow">Guidance, not scanning</div><h3>Posture</h3></div></div>
+          <div class="posture">
+            <div class="check"><span class="pill good"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Good</span><div><h5>Encrypted DNS is active</h5><p>Queries leave over HTTPS to Quad9. Nobody on the Wi-Fi can read which names you asked for.</p></div></div>
+            <div class="check"><span class="pill good"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Good</span><div><h5>macOS is current</h5><p>Security patches ship with point releases. Automatic updates are on.</p></div></div>
+            <div class="check"><span class="pill warn"><svg viewBox="0 0 24 24"><path d="M12 5v8M12 17v.5"/></svg>Check</span><div><h5>iCloud Private Relay is on</h5><p>Relay routes Safari around any local resolver, so Safari's queries do not appear in this log. Turn it off, or accept that Safari is out of scope.</p></div></div>
+            <div class="check"><span class="pill warn"><svg viewBox="0 0 24 24"><path d="M12 5v8M12 17v.5"/></svg>Check</span><div><h5>Lockdown Mode is off</h5><p>Fine for most people. If you are a likely target, turn it on in System Settings. Umbra cannot do this for you.</p></div></div>
+            <div class="check"><span class="pill good"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Good</span><div><h5>Log retention is bounded</h5><p>Seven days, then deleted. The database has 0 remote readers.</p></div></div>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-settings" hidden>
+          <div class="pane-head"><div><div class="eyebrow">Where queries go</div><h3>Settings</h3></div></div>
+          <div class="settings">
+            <div class="setting">
+              <h4>Upstream resolver</h4>
+              <div class="hint">Every name that is not blocked is asked here, encrypted. Pick who you trust.</div>
+              <div id="resolvers"></div>
+            </div>
+            <div class="setting">
+              <h4>Log</h4>
+              <div class="kv"><span>Retention</span><span>7 days, then deleted</span></div>
+              <div class="kv"><span>Location</span><span>~/Library/Application Support/Umbra</span></div>
+            </div>
+            <div class="setting">
+              <h4>Blocklist</h4>
+              <div class="kv"><span>Entries</span><span>12,480</span></div>
+              <div class="kv"><span>Sources</span><span>EasyPrivacy · Umbra seed</span></div>
+              <div class="kv"><span>Scope</span><span>Every app by domain, unless a per-app rule says otherwise</span></div>
+            </div>
+            <div class="setting">
+              <h4>App icons</h4>
+              <div class="kv"><span>Source</span><span>App Store lookup, cached locally</span></div>
+              <div class="kv"><span>What is sent</span><span>Bundle identifiers of listed apps, to apple.com</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ============ ROADMAP ============ -->
+<section id="road">
+  <div class="eyebrow">Roadmap</div>
+  <h2 style="margin-top:14px">Phone first. Then the Mac. Then Android.</h2>
+  <div class="road">
+    <div class="road-card"><div class="st now">Now · TestFlight review</div><h4>iOS</h4><p>DNS firewall, live log, self-filling Apps tab with App Store icons, per-domain rules, report import. Built, on a phone, waiting on Apple.</p></div>
+    <div class="road-card"><div class="st">In design</div><h4>Mac</h4><p>Native app, direct download, notarized. A DNS proxy answers globally and a content filter sees which app opens each connection, so per-app rules become real. Shares the iOS engine.</p></div>
+    <div class="road-card"><div class="st">Next</div><h4>Android</h4><p>Kotlin and Jetpack Compose. Android's VPN service can attribute connections to apps too, so it gets the Mac's per-app rules, not the phone's estimates.</p></div>
+  </div>
+</section>
+
+<!-- ============ CLOSING ============ -->
+<section id="close" style="padding-top:0">
+  <div class="numbers">
+    <div class="num"><div class="v">0<span class="u">servers</span></div><div class="l">of Umbra's own. DNS goes to the resolver you choose; app icons come from Apple.</div></div>
+    <div class="num"><div class="v">1<span class="u">route</span></div><div class="l">into the tunnel: the DNS address. Web traffic never touches it.</div></div>
+    <div class="num"><div class="v">7<span class="u">days</span></div><div class="l">of log, on the device, then gone. Same window as Apple's own report.</div></div>
+  </div>
+</section>
+
+<footer>
+  <p>Umbra for iOS is real and in TestFlight review. The Mac app on this page is a concept running on invented traffic from invented apps; the domains are real tracker domains from the seed blocklist. The Android app is planned. Nothing on this page is collected from you.</p>
+  <span>Built dark on purpose.</span>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const gray = (a, b, t) => { const v = Math.round(lerp(a, b, t)); return `rgb(${v},${v},${v})`; };
+
+  /* ---------- The cube: six isometric slabs, same geometry as the app ---------- */
+  function buildCube(svg, geo) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const { cx, cy, A, h, gap } = geo; const B = A / 2, count = 6;
+    const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+    const defs = el('defs', {});
+    const fid = 'blur-' + Math.random().toString(36).slice(2, 7);
+    const filter = el('filter', { id: fid, x: '-50%', y: '-150%', width: '200%', height: '400%' });
+    filter.appendChild(el('feGaussianBlur', { stdDeviation: A * 0.11 }));
+    defs.appendChild(filter); svg.appendChild(defs);
+    const cubeH = 2 * B + count * h;
+    const shadowY = cy + cubeH / 2 + A * 0.34;
+    const sA = A * 1.15, sB = B * 1.15;
+    const shadow = el('path', { d: `M ${cx} ${shadowY - sB} L ${cx + sA} ${shadowY} L ${cx} ${shadowY + sB} L ${cx - sA} ${shadowY} Z`, filter: `url(#${fid})`, 'transform-origin': `${cx} ${shadowY}` });
+    svg.appendChild(shadow);
+    const group = el('g', {}); svg.appendChild(group);
+    const slabs = [];
+    for (let i = count - 1; i >= 0; i--) {
+      const y0 = cy - cubeH / 2 + B + i * h;
+      const g = el('g', {});
+      const top = el('path', { d: `M ${cx} ${y0 - B} L ${cx + A} ${y0} L ${cx} ${y0 + B} L ${cx - A} ${y0} Z` });
+      const left = el('path', { d: `M ${cx - A} ${y0} L ${cx} ${y0 + B} L ${cx} ${y0 + B + h + 0.6} L ${cx - A} ${y0 + h + 0.6} Z` });
+      const right = el('path', { d: `M ${cx + A} ${y0} L ${cx} ${y0 + B} L ${cx} ${y0 + B + h + 0.6} L ${cx + A} ${y0 + h + 0.6} Z` });
+      g.append(top, left, right); group.appendChild(g);
+      slabs[i] = { g, top, left, right };
+    }
+    let explode = 1, tone = 0, bob = 0;
+    function paint() {
+      const seam = `rgba(0,0,0,${(0.55 * explode).toFixed(3)})`;
+      slabs.forEach((s, i) => {
+        s.g.setAttribute('transform', `translate(0, ${(explode * gap * (i - 2.5) + bob).toFixed(2)})`);
+        s.top.setAttribute('fill', gray(148, 255, tone)); s.left.setAttribute('fill', gray(112, 214, tone)); s.right.setAttribute('fill', gray(87, 173, tone));
+        for (const f of [s.top, s.left, s.right]) { f.setAttribute('stroke', seam); f.setAttribute('stroke-width', 1); }
+      });
+      shadow.setAttribute('fill', `rgba(${Math.round(lerp(255, 56, tone))},${Math.round(lerp(255, 219, tone))},255,${lerp(0.10, 0.42, tone).toFixed(3)})`);
+      shadow.setAttribute('transform', `scale(${(1 - bob / (A * 4)).toFixed(4)})`);
+    }
+    paint();
+    return { set(e, t) { explode = e; tone = t; paint(); }, setBob(b) { bob = b; paint(); } };
+  }
+
+  const heroCube = buildCube($('#hero-cube'), { cx: 300, cy: 290, A: 150, h: 34, gap: 42 });
+  const heroTrack = $('#hero-track'), heroState = $('#hero-state'), heroThesis = $('#hero-thesis'), phaseFill = $('#phase-fill'), scrollHint = $('#scroll-hint'), cubeWrap = $('#cube-wrap');
+  let progress = 0, heroVisible = true, mouseX = 0, mouseY = 0, tiltX = 0, tiltY = 0;
+  function updateProgress() {
+    const rect = heroTrack.getBoundingClientRect();
+    const total = heroTrack.offsetHeight - window.innerHeight;
+    progress = clamp(-rect.top / Math.max(1, total), 0, 1);
+    heroVisible = rect.bottom > 0;
+    const p = reduced ? 1 : ease(progress);
+    heroCube.set(1 - p, p);
+    phaseFill.style.width = (p * 100).toFixed(1) + '%';
+    const on = p > 0.85;
+    heroState.textContent = p < 0.15 ? 'Off' : on ? 'Protected' : 'Assembling';
+    heroState.classList.toggle('on', on);
+    heroThesis.classList.toggle('show', on);
+    scrollHint.style.opacity = progress < 0.05 ? 1 : 0;
+  }
+  window.addEventListener('mousemove', e => { mouseX = (e.clientX / window.innerWidth - 0.5) * 2; mouseY = (e.clientY / window.innerHeight - 0.5) * 2; }, { passive: true });
+
+  const miniCube = buildCube($('#mini-cube'), { cx: 150, cy: 135, A: 66, h: 15, gap: 19 });
+  let miniTarget = 0, miniValue = 0;
+
+  function frame(now) {
+    const t = now / 1000;
+    if (heroVisible) {
+      const p = reduced ? 1 : ease(progress);
+      heroCube.setBob(reduced ? 0 : Math.sin(t * 1.5) * lerp(5, 7, p));
+      tiltX += ((-mouseY * 5) - tiltX) * 0.05; tiltY += ((mouseX * 7) - tiltY) * 0.05;
+      if (!reduced) cubeWrap.style.transform = `perspective(1400px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+    }
+    miniValue += (miniTarget - miniValue) * (reduced ? 1 : 0.1);
+    miniCube.set(miniValue, 1 - miniValue);
+    miniCube.setBob(reduced ? 0 : Math.sin(t * 1.5) * 3);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- 3D tilt of the demo window and the screenshot row ---------- */
+  const win = $('#window'), shots = $$('.shot'), shotsWrap = $('#shots');
+  function updateTilt() {
+    if (reduced) return;
+    const vh = window.innerHeight;
+    const r = win.getBoundingClientRect();
+    win.style.setProperty('--tilt', (clamp((r.top - vh * 0.35) / (vh * 0.65), 0, 1) * 22).toFixed(2) + 'deg');
+    const s = shotsWrap.getBoundingClientRect();
+    const u = clamp((s.top - vh * 0.25) / (vh * 0.7), 0, 1);
+    shots.forEach((el, i) => el.style.setProperty('--ry', ((i - 1.5) * -14 * u).toFixed(2) + 'deg'));
+  }
+  let ticking = false;
+  function onScroll() { if (ticking) return; ticking = true; requestAnimationFrame(() => { updateProgress(); updateTilt(); ticking = false; }); }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  updateProgress(); updateTilt();
+
+  /* ---------- Simulation data ---------- */
+  const APPS = [
+    { id: 'com.burbn.instagram', name: 'Instagram', first: ['i.instagram.com', 'graph.instagram.com', 'scontent.cdninstagram.com'], trackers: ['graph.facebook.com', 'app-measurement.com', 'branch.io'], weight: 9 },
+    { id: 'com.reddit.Reddit', name: 'Reddit', first: ['gql.reddit.com', 'i.redd.it', 'v.redd.it'], trackers: ['app-measurement.com', 'branch.io', 'amplitude.com', 'doubleclick.net'], weight: 7 },
+    { id: 'com.spotify.client', name: 'Spotify', first: ['spclient.wg.spotify.com', 'audio-ak.spotifycdn.com', 'api.spotify.com'], trackers: ['adjust.com', 'crashlytics.com'], weight: 8 },
+    { id: 'com.nytimes.NYTimes', name: 'NYTimes', first: ['a.nytimes.com', 'static01.nyt.com'], trackers: ['chartbeat.com', 'scorecardresearch.com', 'doubleclick.net', 'googlesyndication.com'], weight: 4 },
+    { id: 'com.duolingo.DuolingoMobile', name: 'Duolingo', first: ['android-api.duolingo.com', 'd35aaqx5ub95lt.cloudfront.net'], trackers: ['adjust.com', 'amplitude.com', 'crashlytics.com'], weight: 4 },
+    { id: 'com.wordblitz.app', name: 'Word Blitz', first: ['api.wordblitz.app'], trackers: ['unityads.unity3d.com', 'applovin.com', 'doubleclick.net', 'appsflyer.com', 'criteo.com', 'taboola.com'], weight: 6 },
+    { id: 'com.ubercab.UberClient', name: 'Uber', first: ['cn-geo1.uber.com', 'api.uber.com'], trackers: ['appsflyer.com', 'segment.io', 'branch.io'], weight: 3 },
+    { id: 'com.google.chrome.ios', name: 'Chrome', first: ['www.google.com', 'update.googleapis.com'], trackers: ['app-measurement.com', 'doubleclick.net', 'googlesyndication.com'], weight: 5 },
+    { id: 'com.apple.weather', name: 'Weather', first: ['weather-data.apple.com', 'gspe1-ssl.ls.apple.com'], trackers: [], weight: 3 },
+    { id: 'com.apple.Maps', name: 'Maps', first: ['gspe35-ssl.ls.apple.com', 'gsp-ssl.ls.apple.com'], trackers: [], weight: 3 },
+  ];
+  const OWNERS = { 'graph.facebook.com': 'Meta Platforms', 'app-measurement.com': 'Google LLC', 'doubleclick.net': 'Google LLC', 'googlesyndication.com': 'Google LLC', 'branch.io': 'Branch Metrics', 'amplitude.com': 'Amplitude', 'adjust.com': 'Adjust GmbH', 'crashlytics.com': 'Google LLC', 'chartbeat.com': 'Chartbeat', 'scorecardresearch.com': 'comScore', 'unityads.unity3d.com': 'Unity', 'applovin.com': 'AppLovin', 'appsflyer.com': 'AppsFlyer', 'criteo.com': 'Criteo', 'taboola.com': 'Taboola', 'segment.io': 'Twilio' };
+  const QTYPES = ['A', 'AAAA', 'HTTPS', 'A', 'A'];
+  const RESOLVERS = [
+    { id: 'quad9', name: 'Quad9', note: 'Swiss non-profit. Does not log client addresses.' },
+    { id: 'cloudflare', name: 'Cloudflare', note: 'Fast. Query logs are purged within 24 hours.' },
+    { id: 'mullvad', name: 'Mullvad', note: 'No logging. Run by Mullvad VPN.' },
+    { id: 'custom', name: 'Custom', note: 'A DNS-over-HTTPS URL with an IP address host.' },
+  ];
+  const state = {
+    shield: true, paused: false, blockedOnly: false, otherVPN: false,
+    total: 4812, blocked: 1207,
+    userBlock: new Set(['graph.facebook.com', 'taboola.com']), userAllow: new Set(['branch.io']),
+    perApp: {},
+    events: [], perDomainBlocked: {}, hourly: [], hourlyBlocked: [],
+    perAppHits: {}, selectedApp: 'com.wordblitz.app', resolver: 'quad9',
+  };
+  for (let h = 0; h < 24; h++) {
+    const hour = (new Date().getHours() - 23 + h + 24) % 24;
+    const base = 60 + 220 * Math.max(0, Math.sin((hour - 6) / 24 * Math.PI * 2 * 0.9 + 0.2)) + Math.random() * 40;
+    state.hourly.push(Math.round(base)); state.hourlyBlocked.push(Math.round(base * (0.18 + Math.random() * 0.14)));
+  }
+  APPS.forEach(a => { state.perAppHits[a.id] = {}; a.first.forEach(d => state.perAppHits[a.id][d] = 40 + Math.floor(Math.random() * 400)); a.trackers.forEach(d => state.perAppHits[a.id][d] = 10 + Math.floor(Math.random() * 260)); });
+  ['doubleclick.net', 'app-measurement.com', 'branch.io', 'appsflyer.com', 'unityads.unity3d.com', 'graph.facebook.com', 'amplitude.com'].forEach((d, i) => state.perDomainBlocked[d] = 240 - i * 28 + Math.floor(Math.random() * 20));
+
+  const isTracker = d => d in OWNERS;
+  const suffixIn = (set, d) => { const parts = d.split('.'); while (parts.length >= 2) { if (set.has(parts.join('.'))) return true; parts.shift(); } return false; };
+  const active = () => state.shield && !state.otherVPN;
+  function verdict(d, app) {
+    if (!active()) return false;
+    if (suffixIn(state.userAllow, d)) return false;
+    if (app && state.perApp[app.id] && state.perApp[app.id].has(d)) return true;
+    return isTracker(d) || suffixIn(state.userBlock, d);
+  }
+  const pickApp = () => { const sum = APPS.reduce((s, a) => s + a.weight, 0); let r = Math.random() * sum; for (const a of APPS) { r -= a.weight; if (r <= 0) return a; } return APPS[0]; };
+  const fmt = n => n.toLocaleString('en-US'), two = n => String(n).padStart(2, '0'), timeStr = d => `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+
+  /* ---------- Shield ---------- */
+  const tTotal = $('#t-total'), tBlocked = $('#t-blocked'), power = $('#power'), powerLabel = $('#power-label'), powerSub = $('#power-sub'), statusDot = $('#status-dot'), statusText = $('#status-text'), chipVPN = $('#chip-vpn');
+  const renderTiles = () => { tTotal.textContent = fmt(state.total); tBlocked.textContent = fmt(state.blocked); };
+  function renderShield() {
+    const on = active();
+    miniTarget = on ? 0 : 1;
+    power.setAttribute('aria-pressed', String(state.shield));
+    power.setAttribute('aria-label', state.shield ? 'Turn protection off' : 'Turn protection on');
+    powerLabel.className = 'power-label' + (on ? ' on' : state.otherVPN ? ' paused' : '');
+    powerLabel.textContent = on ? 'Protected' : state.otherVPN ? 'Paused' : 'Off';
+    powerSub.textContent = on ? 'Tracker names are answered with 0.0.0.0. Nothing leaves this Mac.'
+      : state.otherVPN ? 'Another VPN took over. The system runs one VPN at a time, so Umbra stepped aside. Turn the other VPN off, then tap to resume.'
+      : 'Every name is resolved. Trackers get real answers.';
+    statusDot.className = 'dot' + (on ? ' on' : state.otherVPN ? ' paused' : '');
+    statusText.textContent = on ? 'Protected' : state.otherVPN ? 'Paused' : 'Off';
+    chipVPN.setAttribute('aria-pressed', String(state.otherVPN));
+    chipVPN.textContent = state.otherVPN ? 'Other VPN off' : 'Another VPN takes over';
+  }
+  power.addEventListener('click', () => { if (state.otherVPN) { state.otherVPN = false; } else { state.shield = !state.shield; } renderShield(); });
+  chipVPN.addEventListener('click', () => { state.otherVPN = !state.otherVPN; renderShield(); });
+
+  const spark = $('#spark'), sparkTip = $('#spark-tip');
+  function renderSpark() {
+    const W = 600, H = 120, padL = 30, padR = 10, padT = 8, padB = 20;
+    const max = Math.max(...state.hourly) * 1.1;
+    const x = i => padL + (i / 23) * (W - padL - padR), y = v => padT + (1 - v / max) * (H - padT - padB);
+    const path = arr => arr.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const ticks = [0, Math.round(max / 2 / 50) * 50, Math.round(max / 50) * 50].filter((v, i, a) => a.indexOf(v) === i && v <= max);
+    let s = '';
+    ticks.forEach(v => { s += `<line class="grid" x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="axis" x="${padL - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v}</text>`; });
+    [0, 12, 23].forEach(i => { const hr = (new Date().getHours() - 23 + i + 24) % 24; s += `<text class="axis" x="${x(i).toFixed(1)}" y="${H - 5}" text-anchor="${i === 0 ? 'start' : i === 23 ? 'end' : 'middle'}">${two(hr)}:00</text>`; });
+    s += `<path class="area" d="${path(state.hourlyBlocked)} L${x(23).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z"/><path class="total" d="${path(state.hourly)}"/><path class="blocked" d="${path(state.hourlyBlocked)}"/><circle class="end" cx="${x(23).toFixed(1)}" cy="${y(state.hourlyBlocked[23]).toFixed(1)}" r="4"/><line class="cross" id="spark-cross" x1="0" x2="0" y1="${padT}" y2="${H - padB}" style="display:none"/><rect x="${padL}" y="0" width="${W - padL - padR}" height="${H}" fill="transparent" id="spark-hit"/>`;
+    spark.innerHTML = s;
+    const hit = $('#spark-hit'), cross = $('#spark-cross');
+    hit.addEventListener('mousemove', e => {
+      const rect = spark.getBoundingClientRect(); const px = (e.clientX - rect.left) / rect.width * W;
+      const i = clamp(Math.round((px - padL) / (W - padL - padR) * 23), 0, 23);
+      cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.style.display = '';
+      const hr = (new Date().getHours() - 23 + i + 24) % 24;
+      sparkTip.innerHTML = `<b>${two(hr)}:00</b> · ${state.hourly[i]} queries · <b>${state.hourlyBlocked[i]}</b> blocked`;
+      sparkTip.style.display = 'block'; sparkTip.style.left = (e.clientX - rect.left) + 'px'; sparkTip.style.top = (e.clientY - rect.top + 10) + 'px';
+    });
+    hit.addEventListener('mouseleave', () => { cross.style.display = 'none'; sparkTip.style.display = 'none'; });
+  }
+  const bars = $('#bars');
+  function renderBars() {
+    const top = Object.entries(state.perDomainBlocked).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const max = top[0] ? top[0][1] : 1;
+    bars.innerHTML = top.map(([d, n]) => `<div class="bar-row" title="${d}: ${n} sinkholed answers today"><span class="d">${d}</span><span class="track"><span class="fill" data-w="${(n / max * 100).toFixed(1)}"></span></span><span class="n">${n}</span></div>`).join('');
+    requestAnimationFrame(() => $$('.fill', bars).forEach(f => f.style.width = f.dataset.w + '%'));
+  }
+
+  /* ---------- Log ---------- */
+  const log = $('#log'), navLogCount = $('#nav-log-count'), chipBlocked = $('#chip-blocked'), chipPause = $('#chip-pause');
+  const rowHTML = ev => `<div class="row ${ev.blocked ? 'blocked' : ''}"><span class="m"></span><span class="t">${timeStr(ev.at)}</span><span class="d" title="${ev.domain}">${ev.domain}</span><span class="a" title="${ev.app.id}">${ev.app.name}</span><span class="q">${ev.qtype}</span><span class="s">${ev.blocked ? 'Blocked' : 'Allowed'}</span></div>`;
+  function renderLog() {
+    const rows = state.events.filter(e => !state.blockedOnly || e.blocked);
+    log.innerHTML = rows.length ? rows.map(rowHTML).join('') : `<div class="log-empty">${state.blockedOnly ? 'Nothing blocked yet.' : 'Waiting for the first query.'}</div>`;
+    navLogCount.textContent = fmt(state.events.length);
+  }
+  function prependRow(ev) {
+    if (state.blockedOnly && !ev.blocked) return;
+    const empty = $('.log-empty', log); if (empty) empty.remove();
+    log.insertAdjacentHTML('afterbegin', rowHTML(ev));
+    while (log.children.length > 220) log.lastElementChild.remove();
+    navLogCount.textContent = fmt(state.events.length);
+  }
+  chipBlocked.addEventListener('click', () => { state.blockedOnly = !state.blockedOnly; chipBlocked.setAttribute('aria-pressed', String(state.blockedOnly)); renderLog(); });
+  chipPause.addEventListener('click', () => { state.paused = !state.paused; chipPause.setAttribute('aria-pressed', String(state.paused)); chipPause.textContent = state.paused ? 'Resume' : 'Pause'; });
+
+  /* ---------- Apps ---------- */
+  const appList = $('#app-list'), appDetail = $('#app-detail');
+  const trackerHits = a => a.trackers.reduce((s, d) => s + (state.perAppHits[a.id][d] || 0), 0);
+  function renderApps() {
+    const sorted = APPS.slice().sort((a, b) => trackerHits(b) - trackerHits(a));
+    appList.innerHTML = sorted.map(a => { const n = trackerHits(a); return `<button class="app-item" data-app="${a.id}" aria-current="${a.id === state.selectedApp}"><span class="mono">${a.name[0]}</span><span><div class="nm">${a.name}</div><div class="bid">${a.id}</div></span><span class="tc ${n ? '' : 'zero'}">${n ? fmt(n) : '0'}</span></button>`; }).join('');
+    $$('.app-item', appList).forEach(b => b.addEventListener('click', () => { state.selectedApp = b.dataset.app; renderApps(); }));
+    renderAppDetail();
+  }
+  function domRow(app, d, tracker) {
+    const blockedGlobal = state.userBlock.has(d), allowed = state.userAllow.has(d);
+    const perApp = !!(state.perApp[app.id] && state.perApp[app.id].has(d));
+    const on = allowed ? false : (tracker || blockedGlobal || perApp);
+    const own = OWNERS[d] || (tracker ? '' : 'first party');
+    const effective = !active() ? 'resolved (shield off)' : allowed ? 'allowed by you' : on ? 'sinkholed' : 'resolved';
+    const badges = (tracker ? '<span class="badge">UMBRA</span>' : '') + (blockedGlobal ? '<span class="badge you">BLOCKED BY YOU</span>' : '') + (perApp ? '<span class="badge you">THIS APP ONLY</span>' : '') + (allowed ? '<span class="badge you">ALLOWED BY YOU</span>' : '');
+    return `<div class="dom ${tracker ? 'tr' : ''}"><span><span class="d">${d}</span><span class="own" style="display:block">${own}${own ? ' · ' : ''}${fmt(state.perAppHits[app.id][d])} hits · ${effective}${badges}</span></span><span class="own" style="font-size:9px;letter-spacing:.1em">${tracker ? 'GLOBAL' : 'PER APP'}</span><button class="toggle" role="switch" aria-checked="${on}" data-domain="${d}" aria-label="Block ${d}${tracker ? ' for every app' : ' for ' + app.name}" ${allowed ? 'disabled title="On your allow list"' : ''}></button></div>`;
+  }
+  function renderAppDetail() {
+    const app = APPS.find(a => a.id === state.selectedApp) || APPS[0];
+    const tr = app.trackers, fp = app.first;
+    appDetail.innerHTML = `<h4>${app.name}</h4><div class="bid">${app.id}</div>
+      <p class="note">${tr.length ? `${tr.length} of ${tr.length + fp.length} domains this app contacted in the last seven days are known trackers. On the Mac, the switch on a first-party domain blocks it for this app only; tracker blocks stay global.` : 'No domain this app contacted is a known tracker. Nothing to block.'}</p>
+      ${tr.length ? `<div class="group-h">Trackers · ${tr.length}</div>` + tr.map(d => domRow(app, d, true)).join('') : ''}
+      <div class="group-h">Other · ${fp.length}</div>${fp.map(d => domRow(app, d, false)).join('')}`;
+    $$('.toggle', appDetail).forEach(t => t.addEventListener('click', () => {
+      const d = t.dataset.domain, on = t.getAttribute('aria-checked') === 'true';
+      if (isTracker(d)) { if (on) { state.userBlock.delete(d); state.userAllow.add(d); } else { state.userAllow.delete(d); } }
+      else { state.perApp[app.id] = state.perApp[app.id] || new Set(); if (on) state.perApp[app.id].delete(d); else state.perApp[app.id].add(d); }
+      renderAppDetail(); renderLists();
+    }));
+  }
+
+  /* ---------- Rules ---------- */
+  const blockRows = $('#block-rows'), allowRows = $('#allow-rows'), navListCount = $('#nav-list-count');
+  const listRow = (d, set) => `<div class="list-row"><span>${d}</span><span class="src">${isTracker(d) ? 'also bundled' : 'yours'}</span><button aria-label="Remove ${d}" data-d="${d}" data-set="${set}">×</button></div>`;
+  function renderLists() {
+    blockRows.innerHTML = [...state.userBlock].sort().map(d => listRow(d, 'block')).join('') || '<div class="list-row" style="color:var(--ink-3)">Nothing added yet.</div>';
+    allowRows.innerHTML = [...state.userAllow].sort().map(d => listRow(d, 'allow')).join('') || '<div class="list-row" style="color:var(--ink-3)">Nothing allowed yet.</div>';
+    navListCount.textContent = state.userBlock.size + state.userAllow.size;
+    $$('.list-row button').forEach(b => b.addEventListener('click', () => { (b.dataset.set === 'block' ? state.userBlock : state.userAllow).delete(b.dataset.d); renderLists(); renderAppDetail(); }));
+  }
+  function bindAdd(formId, set, other) {
+    $(formId).addEventListener('submit', e => {
+      e.preventDefault();
+      const input = $('input', e.target); const d = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+      if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d)) { input.setCustomValidity('Enter a domain like example.com'); input.reportValidity(); return; }
+      input.setCustomValidity(''); set.add(d); other.delete(d); input.value = ''; renderLists(); renderAppDetail();
+    });
+    $(formId + ' input').addEventListener('input', e => e.target.setCustomValidity(''));
+  }
+  bindAdd('#add-block', state.userBlock, state.userAllow);
+  bindAdd('#add-allow', state.userAllow, state.userBlock);
+
+  /* ---------- Settings ---------- */
+  const resolversEl = $('#resolvers'), statusResolver = $('#status-resolver');
+  function renderResolvers() {
+    resolversEl.innerHTML = RESOLVERS.map(r => `<button class="radio" role="radio" aria-checked="${r.id === state.resolver}" data-id="${r.id}"><i></i><span><div class="nm">${r.name}</div><div class="ds">${r.note}</div></span></button>`).join('');
+    $$('.radio', resolversEl).forEach(b => b.addEventListener('click', () => { state.resolver = b.dataset.id; statusResolver.textContent = RESOLVERS.find(r => r.id === state.resolver).name; renderResolvers(); }));
+  }
+
+  /* ---------- Nav ---------- */
+  $$('.nav-btn').forEach(b => b.addEventListener('click', () => {
+    $$('.nav-btn').forEach(x => x.removeAttribute('aria-current')); b.setAttribute('aria-current', 'page');
+    $$('.pane').forEach(p => p.hidden = true); $('#pane-' + b.dataset.view).hidden = false;
+    if (b.dataset.view === 'log') renderLog();
+    if (b.dataset.view === 'shield') { renderSpark(); renderBars(); }
+  }));
+
+  /* ---------- Simulation loop ---------- */
+  function emit() {
+    const app = pickApp();
+    const useTracker = app.trackers.length && Math.random() < 0.42;
+    const domain = useTracker ? app.trackers[Math.floor(Math.random() * app.trackers.length)] : app.first[Math.floor(Math.random() * app.first.length)];
+    const ev = { at: new Date(), app, domain, qtype: QTYPES[Math.floor(Math.random() * QTYPES.length)], blocked: verdict(domain, app) };
+    state.events.unshift(ev); if (state.events.length > 400) state.events.pop();
+    state.total++; state.hourly[23]++;
+    if (ev.blocked) { state.blocked++; state.hourlyBlocked[23]++; state.perDomainBlocked[domain] = (state.perDomainBlocked[domain] || 0) + 1; }
+    state.perAppHits[app.id][domain] = (state.perAppHits[app.id][domain] || 0) + 1;
+    renderTiles();
+    if (!$('#pane-log').hidden) prependRow(ev); else navLogCount.textContent = fmt(state.events.length);
+  }
+  let sparkDirty = 0;
+  function tick() {
+    if (!state.paused && document.visibilityState === 'visible') {
+      const bursts = Math.random() < 0.18 ? 3 : 1;
+      for (let i = 0; i < bursts; i++) emit();
+      if (++sparkDirty % 12 === 0 && !$('#pane-shield').hidden) { renderSpark(); renderBars(); }
+    }
+    setTimeout(tick, 320 + Math.random() * 700);
+  }
+  const clock = $('#clock'), todayDate = $('#today-date');
+  todayDate.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  setInterval(() => { clock.textContent = timeStr(new Date()); }, 1000);
+  clock.textContent = timeStr(new Date());
+  for (let i = 0; i < 18; i++) emit();
+  state.events.forEach((e, i) => { e.at = new Date(Date.now() - (18 - i) * 900); });
+  state.events.sort((a, b) => b.at - a.at);
+  state.total = 4812; state.blocked = 1207;
+  renderShield(); renderTiles(); renderSpark(); renderBars(); renderLog(); renderApps(); renderLists(); renderResolvers();
+  tick();
+})();
+</script>
+
+</body>
+</html>
