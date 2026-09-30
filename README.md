@@ -1,6 +1,6 @@
 # Umbra site
 
-Static site for Umbra, a DNS firewall for iPhone. `index.html` is the page, `privacy.html` the privacy policy, `img/` the screenshots and logo. No build step.
+Static site for Umbra, a DNS firewall for iPhone. `index.html` is the page, `privacy.html` the privacy policy, `blocklist.txt` the list the "Ask it yourself" box checks (a copy of `UmbraCore/Sources/UmbraCore/Resources/blocklist.txt`), `img/` the screenshots and logo. No build step.
 
 Source of truth for the page lives in the Umbra project repository; this repository is what Vercel serves.
 
